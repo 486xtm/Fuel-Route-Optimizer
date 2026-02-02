@@ -16,10 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from routes.views import index
+from routes.views import index, ip_logs_page
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', index, name='index'),  # Frontend
+    path('ip-logs/', ip_logs_page, name='ip-logs-page'),  # IP Logs Page
     path('api/', include('routes.urls')),
 ]

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Access Logs - Fuel Route Optimizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .gradient-animate {
+            background: white;
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .dark .gradient-animate {
+            background: black;
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .dark .glass-effect {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .theme-toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #cbd5e1;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .dark .theme-toggle {
+            background: #475569;
+        }
+
+        .theme-toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .dark .theme-toggle-slider {
+            transform: translateX(30px);
+            background: #1e293b;
+        }
+    </style>
+</head>
+<body class="gradient-animate min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Header -->
+        <div class="glass-effect rounded-3xl shadow-2xl mb-6 overflow-hidden">
+            <div class="text-blue-900 dark:text-white px-8 py-10 text-center relative">
+                <!-- Theme Toggle Button -->
+                <div class="absolute top-6 right-6">
+                    <div class="theme-toggle" id="themeToggle">
+                        <div class="theme-toggle-slider">
+                            <span id="themeIcon">☀️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Back Button -->
+                <div class="absolute top-6 left-6">
+                    <a href="/" class="bg-primary hover:bg-secondary text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Home
+                    </a>
+                </div>
+
+                <div class="flex items-center justify-center mb-4">
+                    <svg class="w-12 h-12 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <h1 class="text-5xl font-bold">IP Access Logs</h1>
+                </div>
+                <p class="text-xl opacity-90">Monitor all API requests and route optimizations</p>
+            </div>
+        </div>
+
+        <!-- IP Logs Section -->
+        <div class="glass-effect rounded-2xl shadow-xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Request History</h2>
+                    <span id="totalLogsCount" class="ml-4 bg-primary text-white px-4 py-1 rounded-full text-sm font-semibold">0</span>
+                </div>
+                <button id="refreshLogsBtn" class="bg-primary hover:bg-secondary text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg">
+                    <span class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Refresh
+                    </span>
+                </button>
+            </div>
+
+            <div id="ipLogsLoading" class="hidden text-center py-8">
+                <div class="spinner"></div>
+                <p class="text-primary dark:text-purple-400 font-semibold mt-2">Loading IP logs...</p>
+            </div>
+
+            <div id="ipLogsError" class="hidden bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-200 p-4 rounded-lg mb-4"></div>
+
+            <div id="ipLogsContainer" class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b-2 border-gray-300 dark:border-gray-600">
+                            <th class="py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">IP Address</th>
+                            <th class="py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">IP Location</th>
+                            <th class="py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Date & Time</th>
+                            <th class="py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Start Location</th>
+                            <th class="py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">End Location</th>
+                            <th class="py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ipLogsTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <!-- IP logs will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="ipLogsStats" class="mt-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                <div>
+                    Showing <span id="showingCount" class="font-bold text-primary">0</span> of <span id="totalCount" class="font-bold text-primary">0</span> requests
+                </div>
+                <div>
+                    Last updated: <span id="lastUpdated" class="font-bold">Never</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Management
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const html = document.documentElement;
+
+        // Check for saved theme preference or default to light mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (currentTheme === 'dark') {
+            html.classList.add('dark');
+            themeIcon.textContent = '🌙';
+        } else {
+            html.classList.remove('dark');
+            themeIcon.textContent = '☀️';
+        }
+
+        // Theme toggle handler
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+
+            if (html.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+                themeIcon.textContent = '🌙';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeIcon.textContent = '☀️';
+            }
+        });
+
+        // IP Logs Functionality
+        const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+        const ipLogsLoading = document.getElementById('ipLogsLoading');
+        const ipLogsError = document.getElementById('ipLogsError');
+        const ipLogsTableBody = document.getElementById('ipLogsTableBody');
+        const totalLogsCount = document.getElementById('totalLogsCount');
+        const showingCount = document.getElementById('showingCount');
+        const totalCount = document.getElementById('totalCount');
+        const lastUpdated = document.getElementById('lastUpdated');
+
+        // Function to fetch and display IP logs
+        async function fetchIPLogs() {
+            ipLogsLoading.classList.remove('hidden');
+            ipLogsError.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/ip-logs/?limit=100');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Clear existing rows
+                ipLogsTableBody.innerHTML = '';
+
+                // Update counts
+                totalLogsCount.textContent = data.total_count;
+                showingCount.textContent = data.logs.length;
+                totalCount.textContent = data.total_count;
+
+                // Update last updated time
+                const now = new Date();
+                lastUpdated.textContent = now.toLocaleTimeString('en-US');
+
+                // Add rows
+                if (data.logs.length === 0) {
+                    ipLogsTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-gray-500 dark:text-gray-400">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                </svg>
+                                <p class="text-lg font-semibold">No IP logs found yet</p>
+                                <p class="text-sm mt-2">Make a route optimization request to see logs here.</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    data.logs.forEach(log => {
+                        const row = document.createElement('tr');
+                        row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+
+                        // Format timestamp
+                        const date = new Date(log.timestamp);
+                        const formattedDate = date.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+
+                        // Format IP location
+                        let ipLocation = '-';
+                        if (log.ip_city && log.ip_country) {
+                            ipLocation = `${log.ip_city}, ${log.ip_country}`;
+                        } else if (log.ip_country) {
+                            ipLocation = log.ip_country;
+                        }
+
+                        // Truncate user agent
+                        const userAgent = log.user_agent ?
+                            (log.user_agent.length > 50 ? log.user_agent.substring(0, 50) + '...' : log.user_agent) :
+                            '-';
+
+                        row.innerHTML = `
+                            <td class="py-3 px-4 text-sm text-gray-800 dark:text-gray-200 font-mono">${log.ip_address}</td>
+                            <td class="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                                <span class="inline-flex items-center">
+                                    <svg class="w-4 h-4 mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    ${ipLocation}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">${formattedDate}</td>
+                            <td class="py-3 px-4 text-sm text-gray-800 dark:text-gray-200">${log.start_location || '-'}</td>
+                            <td class="py-3 px-4 text-sm text-gray-800 dark:text-gray-200">${log.end_location || '-'}</td>
+                            <td class="py-3 px-4 text-xs text-gray-600 dark:text-gray-400" title="${log.user_agent || ''}">${userAgent}</td>
+                        `;
+
+                        ipLogsTableBody.appendChild(row);
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error fetching IP logs:', error);
+                ipLogsError.textContent = `Error loading IP logs: ${error.message}`;
+                ipLogsError.classList.remove('hidden');
+            } finally {
+                ipLogsLoading.classList.add('hidden');
+            }
+        }
+
+        // Refresh button handler
+        refreshLogsBtn.addEventListener('click', fetchIPLogs);
+
+        // Load IP logs on page load
+        fetchIPLogs();
+
+        // Auto-refresh every 30 seconds
+        setInterval(fetchIPLogs, 30000);
+    </script>
+</body>
+</html>
+

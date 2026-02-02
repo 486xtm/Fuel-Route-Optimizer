@@ -245,4 +245,3 @@ function displayFuelStops(fuelStops) {
         fuelStopsList.appendChild(card);
     });
 }
-

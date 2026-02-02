@@ -43,3 +43,26 @@ class FuelStation(models.Model):
 
     def __str__(self):
         return f"{self.truckstop_name} - {self.city}, {self.state} (${self.retail_price})"
+
+
+class IPLog(models.Model):
+    """Model to store IP address logs with timestamps."""
+
+    ip_address = models.GenericIPAddressField(db_index=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    start_location = models.CharField(max_length=255, blank=True, null=True)
+    end_location = models.CharField(max_length=255, blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)
+    ip_city = models.CharField(max_length=100, blank=True, null=True)
+    ip_region = models.CharField(max_length=100, blank=True, null=True)
+    ip_country = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp']),
+            models.Index(fields=['ip_address', '-timestamp']),
+        ]
+
+    def __str__(self):
+        return f"{self.ip_address} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
