@@ -33,7 +33,7 @@ class RoutingService:
             return cached_result
         
         try:
-            location = self.geolocator.geocode(location_string + ", USA", timeout=10)
+            location = self.geolocator.geocode(location_string + ", USA", timeout=100)
             if location:
                 result = (location.latitude, location.longitude)
                 cache.set(cache_key, result, timeout=86400)  # Cache for 24 hours
