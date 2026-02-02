@@ -21,6 +21,6 @@ from routes.views import index, ip_logs_page
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', index, name='index'),  # Frontend
-    path('ip-logs/', ip_logs_page, name='ip-logs-page'),  # IP Logs Page
+    path('ip-logs-22312/', ip_logs_page, name='ip-logs-page'),  # IP Logs Page
     path('api/', include('routes.urls')),
 ]
