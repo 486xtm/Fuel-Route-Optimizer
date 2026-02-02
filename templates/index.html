@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel Route Optimizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .gradient-animate {
+            background: white;
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .dark .gradient-animate {
+            background: black;
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .dark .glass-effect {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        #map {
+            height: calc(100vh - 180px);
+            min-height: 500px;
+        }
+
+        .theme-toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #cbd5e1;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .dark .theme-toggle {
+            background: #475569;
+        }
+
+        .theme-toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .dark .theme-toggle-slider {
+            transform: translateX(30px);
+            background: #1e293b;
+        }
+    </style>
+</head>
+<body class="gradient-animate min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Header -->
+        <div class="glass-effect rounded-3xl shadow-2xl mb-6 overflow-hidden">
+            <div class="text-blue-900 dark:text-white px-8 py-10 text-center relative">
+                <!-- Theme Toggle Button -->
+                <div class="absolute top-6 right-6">
+                    <div class="theme-toggle" id="themeToggle">
+                        <div class="theme-toggle-slider">
+                            <span id="themeIcon">☀️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center mb-4">
+                    <h1 class="text-5xl font-bold">Fuel Route Optimizer</h1>
+                </div>
+                <p class="text-xl opacity-90">Find the most cost-effective fuel stops for your journey across America</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Input Form -->
+                <div class="glass-effect rounded-2xl shadow-xl p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        Route Details
+                    </h2>
+
+                    <form id="routeForm" class="space-y-5">
+                        <div>
+                            <label for="startLocation" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                📍 Start Location
+                            </label>
+                            <input type="text" id="startLocation"
+                                   class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition-all outline-none"
+                                   placeholder="e.g., Los Angeles, CA" required>
+                        </div>
+
+                        <div>
+                            <label for="endLocation" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                🎯 End Location
+                            </label>
+                            <input type="text" id="endLocation"
+                                   class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition-all outline-none"
+                                   placeholder="e.g., Kennesaw, GA" required>
+                        </div>
+
+                        <div>
+                            <label for="initialFuel" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                ⛽ Initial Fuel (miles)
+                            </label>
+                            <input type="number" id="initialFuel" value="500" min="1" max="500"
+                                   class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition-all outline-none"
+                                   required>
+                        </div>
+
+                        <button type="submit" id="optimizeBtn"
+                                class="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-4 px-6 rounded-xl hover:shadow-2xl hover:scale-105 transform transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                            <span class="flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Optimize Route
+                            </span>
+                        </button>
+
+                        <div id="loading" class="hidden text-center py-4">
+                            <div class="spinner"></div>
+                            <p class="text-primary dark:text-purple-400 font-semibold mt-2">Optimizing your route...</p>
+                        </div>
+
+                        <div id="error" class="hidden bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-200 p-4 rounded-lg"></div>
+                    </form>
+                </div>
+
+                <!-- Results Summary -->
+                <div id="results" class="hidden space-y-4">
+                    <div class="glass-effect rounded-2xl shadow-xl p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Route Summary
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 p-4 rounded-xl border-l-4 border-blue-500">
+                                <p class="text-xs font-semibold text-blue-600 dark:text-blue-300 uppercase tracking-wide">Distance</p>
+                                <p id="totalDistance" class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">-</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 p-4 rounded-xl border-l-4 border-purple-500">
+                                <p class="text-xs font-semibold text-purple-600 dark:text-purple-300 uppercase tracking-wide">Duration</p>
+                                <p id="totalDuration" class="text-2xl font-bold text-purple-900 dark:text-purple-100 mt-1">-</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 p-4 rounded-xl border-l-4 border-green-500">
+                                <p class="text-xs font-semibold text-green-600 dark:text-green-300 uppercase tracking-wide">Fuel Stops</p>
+                                <p id="fuelStopsCount" class="text-2xl font-bold text-green-900 dark:text-green-100 mt-1">-</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900 dark:to-yellow-800 p-4 rounded-xl border-l-4 border-yellow-500">
+                                <p class="text-xs font-semibold text-yellow-600 dark:text-yellow-300 uppercase tracking-wide">Total Cost</p>
+                                <p id="totalCost" class="text-2xl font-bold text-yellow-900 dark:text-yellow-100 mt-1">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="lg:col-span-2">
+                <div class="glass-effect rounded-2xl shadow-xl overflow-hidden">
+                    <div id="map" class="w-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fuel Stops List - Full Width on Desktop, Column on Mobile -->
+        <div id="fuelStopsList" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
